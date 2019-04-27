@@ -1306,7 +1306,18 @@ function loadData() {
         result.gyms.forEach(function(item) {
           gyms.push(item);
           if (settings.showGyms === true) {
-            var marker = L.circleMarker([item.lat, item.lng], {
+            if(item.ex == 1){
+              var marker = L.circleMarker([item.lat, item.lng], {
+              color: 'maroon',
+              radius: 3,
+              opacity: 0.6
+            }).addTo(map);
+            marker.tags = {};
+            marker.tags.id = item.id;
+            marker.bindPopup("<span>ID: " + item.id + "</span>").addTo(gymLayer);
+            }
+            else{
+				var marker = L.circleMarker([item.lat, item.lng], {
               color: 'red',
               radius: 2,
               opacity: 0.6
@@ -1314,6 +1325,7 @@ function loadData() {
             marker.tags = {};
             marker.tags.id = item.id;
             marker.bindPopup("<span>ID: " + item.id + "</span>").addTo(gymLayer);
+			}
           }
         });
       }
@@ -1338,14 +1350,26 @@ function loadData() {
         result.spawnpoints.forEach(function(item) {
           spawnpoints.push(item);
           if (settings.showSpawnpoints === true) {
-            var marker = L.circleMarker([item.lat, item.lng], {
-              color: 'blue',
-              radius: 1,
-              opacity: 0.6
-            }).addTo(map);
-            marker.tags = {};
-            marker.tags.id = item.id;
-            marker.bindPopup("<span>ID: " + item.id + "</span>").addTo(spawnpointLayer);
+            if(item.despawn_sec != null){
+              var marker = L.circleMarker([item.lat, item.lng], {
+                color: 'purple',
+                radius: 1,
+                opacity: 0.6
+              }).addTo(map);
+              marker.tags = {};
+              marker.tags.id = item.id;
+              marker.bindPopup("<span>ID: " + item.id + "</span>").addTo(spawnpointLayer);
+            }
+            else{
+              var marker = L.circleMarker([item.lat, item.lng], {
+                color: 'blue',
+                radius: 1,
+                opacity: 0.6
+              }).addTo(map);
+              marker.tags = {};
+              marker.tags.id = item.id;
+              marker.bindPopup("<span>ID: " + item.id + "</span>").addTo(spawnpointLayer);              
+            }
           }
         });
       }
@@ -2227,7 +2251,7 @@ function getData($args) {
     $binds[] = null;
   }
 
-  $sql_gym = "SELECT id, lat, lon as lng FROM gym WHERE " . $show_unknown_mod . "lat > ? AND lon > ? AND lat < ? AND lon < ?";
+  $sql_gym = "SELECT id, lat, lon as lng, ex_raid_eligible as ex FROM gym WHERE " . $show_unknown_mod . "lat > ? AND lon > ? AND lat < ? AND lon < ?";
   $stmt = $db->prepare($sql_gym);
   
   $stmt->execute(array_merge($binds, [$args->min_lat, $args->min_lng, $args->max_lat, $args->max_lng]));
@@ -2240,7 +2264,7 @@ function getData($args) {
   $stmt->execute(array_merge($binds, [$args->min_lat, $args->min_lng, $args->max_lat, $args->max_lng]));
   $stops = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-  $sql_spawnpoint = "SELECT id, lat, lon as lng FROM spawnpoint WHERE lat > ? AND lon > ? AND lat < ? AND lon < ?";
+  $sql_spawnpoint = "SELECT id, despawn_sec, lat, lon as lng FROM spawnpoint WHERE lat > ? AND lon > ? AND lat < ? AND lon < ?";
   $stmt = $db->prepare($sql_spawnpoint);
   
   $stmt->execute([$args->min_lat, $args->min_lng, $args->max_lat, $args->max_lng]);
