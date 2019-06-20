@@ -1310,7 +1310,7 @@ function loadData() {
             if(item.ex == 1){
               var marker = L.circleMarker([item.lat, item.lng], {
               color: 'maroon',
-              radius: 3,
+              radius: 2,
               opacity: 0.6
             }).addTo(map);
             marker.tags = {};
