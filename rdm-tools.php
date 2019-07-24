@@ -77,6 +77,7 @@ var manualCircle = false;
 var drawControl,
   buttonManualCircle,
   buttonImportNests,
+  buttonImportLakes,
   buttonModalImportPolygon,
   buttonModalImportInstance,
   buttonTrash,
@@ -486,6 +487,17 @@ function initMap() {
     }]
   });
 
+  buttonImportLakes = L.easyButton({
+    states: [{
+      stateName: 'openImportPolygonModal',
+      icon: 'fas fa-ship',
+      title: 'Import lakes from OSM',
+      onClick: function (control){
+        getLakes();
+      }
+    }]
+  });
+
   buttonModalImportPolygon = L.easyButton({
     states: [{
       stateName: 'openImportPolygonModal',
@@ -533,7 +545,7 @@ function initMap() {
     }]
   });
 
-  barShowPolyOpts = L.easyBar([buttonManualCircle, buttonImportNests, buttonModalImportPolygon, buttonModalImportInstance, buttonTrashRoute, buttonTrash], { position: 'topleft' }).addTo(map);
+  barShowPolyOpts = L.easyBar([buttonManualCircle, buttonImportNests, buttonImportLakes, buttonModalImportPolygon, buttonModalImportInstance, buttonTrashRoute, buttonTrash], { position: 'topleft' }).addTo(map);
 
   buttonGenerateRoute = L.easyButton({
     id: 'generateRoute',
@@ -1249,6 +1261,88 @@ function getNests() {
                   '<div class="input-group mb-3"><button class="btn btn-secondary btn-sm deleteLayer" data-layer-container="nestLayer" data-layer-id=' +
                   layer._leaflet_id +
                   ' type="button">Go!</button><div class="input-group-append"><span style="padding: .375rem .75rem;">Remove from map</span></div></div>' +
+                  '<div class="input-group"><button class="btn btn-secondary btn-sm exportLayer" data-layer-container="nestLayer" data-layer-id=' +
+                  layer._leaflet_id +
+                  ' type="button">Go!</button><div class="input-group-append"><span style="padding: .375rem .75rem;">Export Polygon</span></div></div>';
+          return output;
+        });
+      });
+    },
+    complete: function() {
+      $("#modalLoading").modal('hide');
+    }
+  });
+}
+
+function getLakes() {
+  circleLayer.clearLayers();
+  editableLayer.clearLayers();
+  nestLayer.clearLayers();
+
+  const bounds = map.getBounds();
+  const overpassApiEndpoint = 'https://overpass-api.de/api/interpreter';
+
+  var queryBbox = [ // s, e, n, w
+    bounds.getSouthWest().lat,
+    bounds.getSouthWest().lng,
+    bounds.getNorthEast().lat,
+    bounds.getNorthEast().lng
+  ].join(',');
+
+  var queryDate = "2018-11-16T00:00:00Z";
+
+  var queryOptions = [
+    '[out:json]',
+    '[bbox:' + queryBbox + ']',
+    '[date:"' + queryDate + '"]'
+  ].join('');
+
+  var queryLakeWays = [
+    'way[natural=water];',
+    'way[natural=beach];',
+    'way[natural=coastline];',
+    'way[amenity=fountain];',
+    'way[waterway=stream];',
+    'way[waterway=canal];',
+    'way[waterway=ditch];',
+    'relation[natural=water];',
+    'relation[water=lake];',
+    'relation[waterway=riverbank];'
+  ].join('');
+
+  var overPassQuery = queryOptions + ';(' + queryLakeWays + ')' + ';out;>;out skel qt;';
+
+  if (debug !== false) { console.log(overPassQuery) }
+  
+  $.ajax({
+    beforeSend: function() {
+      $("#modalLoading").modal('show');
+    },
+    url: overpassApiEndpoint,
+    type: 'GET',
+    dataType: 'json',
+    data: {'data': overPassQuery},
+    success: function (result) {
+      if (debug !== false) { console.log(result) }
+      var geoJsonFeatures = osmtogeojson(result);
+      geoJsonFeatures.features.forEach(function(feature) {
+        feature = turf.flip(feature);
+        var polygon = L.polygon(feature.geometry.coordinates, {
+          clickable: false,
+          color: "blue",
+          fill: true,
+          fillColor: null,
+          fillOpacity: 0.2,
+          opacity: 0.5,
+          stroke: true,
+          weight: 4
+        });
+        polygon.tags = {};
+        polygon.tags.name = feature.properties.tags.name;
+        polygon.addTo(nestLayer);
+        polygon.bindPopup(function (layer) {
+          var output = name +
+                  '<div class="input-group-append"><span style="padding: .375rem .75rem;">Remove from map</span></div></div>' +
                   '<div class="input-group"><button class="btn btn-secondary btn-sm exportLayer" data-layer-container="nestLayer" data-layer-id=' +
                   layer._leaflet_id +
                   ' type="button">Go!</button><div class="input-group-append"><span style="padding: .375rem .75rem;">Export Polygon</span></div></div>';
